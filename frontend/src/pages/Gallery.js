@@ -24,6 +24,7 @@ const Gallery = () => {
       setPhotos(response.data);
     } catch (error) {
       console.error("Erro ao buscar fotos:", error);
+      setPhotos([]);
     } finally {
       setLoading(false);
     }
@@ -139,13 +140,14 @@ const Gallery = () => {
           <div className="text-center text-maverick-yellow font-special-elite text-2xl" data-testid="loading-photos">
             [ CARREGANDO FOTOS... ]
           </div>
-        ) : photos.length === 0 ? (
+        ) : (!Array.isArray(photos) || photos.length === 0) ? (
           <div className="text-center text-maverick-dim font-courier-prime text-xl" data-testid="no-photos-message">
             Nenhuma foto adicionada ainda.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12">
-            {photos.map((photo, index) => (
+            {/* CORREÇÃO DE SEGURANÇA: Array.isArray */}
+            {Array.isArray(photos) && photos.map((photo, index) => (
               <motion.div
                 key={photo.id}
                 initial={{ opacity: 0, scale: 0.8, rotate: rotations[index % 8] }}
