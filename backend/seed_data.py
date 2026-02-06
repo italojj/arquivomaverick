@@ -1,4 +1,4 @@
--"""
+"""
 Script para popular o banco de dados com os dados iniciais da Gangue da Maverick
 Executa automaticamente quando o backend inicia se o banco estiver vazio
 """
@@ -11,12 +11,19 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
+# Garante que não quebre se a variável não estiver carregada ainda (segurança extra)
+mongo_url = os.environ.get('MONGO_URL')
+db_name = os.environ.get('DB_NAME', 'maverick_db')
+
+if not mongo_url:
+    print("❌ ERRO: MONGO_URL não encontrada. Configure as variáveis de ambiente.")
+    exit(1)
+
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
 
 
-# Dados dos membros
+# Dados dos membros (ORIGINAIS)
 MEMBERS_DATA = [
     {
         "id": "ramon-001",
@@ -165,7 +172,7 @@ MEMBERS_DATA = [
     }
 ]
 
-# Citações
+# Citações (ORIGINAIS)
 QUOTES_DATA = [
     {"id": "quote-001", "text": "Quem namora é ela, não é tu", "member_id": "jordan-008"},
     {"id": "quote-002", "text": "Eu vou gostosão pro são joão da escola", "member_id": "ramon-001"},
@@ -180,26 +187,30 @@ async def seed_database():
     """Popula o banco de dados com dados iniciais se estiver vazio"""
     
     # Verificar se já existem membros
-    existing_members = await db.members.count_documents({})
-    
-    if existing_members == 0:
-        print("🌱 Banco de dados vazio. Populando com dados iniciais...")
+    try:
+        existing_members = await db.members.count_documents({})
         
-        # Inserir membros
-        for member in MEMBERS_DATA:
-            member['created_at'] = "2024-01-01T00:00:00"
-            await db.members.insert_one(member)
-        print(f"✅ {len(MEMBERS_DATA)} membros adicionados")
-        
-        # Inserir citações
-        for quote in QUOTES_DATA:
-            quote['created_at'] = "2024-01-01T00:00:00"
-            await db.quotes.insert_one(quote)
-        print(f"✅ {len(QUOTES_DATA)} citações adicionadas")
-        
-        print("✨ Banco de dados populado com sucesso!")
-    else:
-        print(f"ℹ️  Banco de dados já contém {existing_members} membros. Seed não necessário.")
+        if existing_members == 0:
+            print("🌱 Banco de dados vazio. Populando com dados iniciais...")
+            
+            # Inserir membros
+            for member in MEMBERS_DATA:
+                member['created_at'] = "2024-01-01T00:00:00"
+                await db.members.insert_one(member)
+            print(f"✅ {len(MEMBERS_DATA)} membros adicionados")
+            
+            # Inserir citações
+            for quote in QUOTES_DATA:
+                quote['created_at'] = "2024-01-01T00:00:00"
+                await db.quotes.insert_one(quote)
+            print(f"✅ {len(QUOTES_DATA)} citações adicionadas")
+            
+            print("✨ Banco de dados populado com sucesso!")
+        else:
+            print(f"ℹ️  Banco de dados já contém {existing_members} membros. Seed não necessário.")
+            
+    except Exception as e:
+        print(f"❌ Erro ao conectar ou inserir dados: {e}")
 
 
 if __name__ == "__main__":
