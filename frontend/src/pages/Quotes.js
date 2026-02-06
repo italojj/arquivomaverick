@@ -27,6 +27,8 @@ const Quotes = () => {
       setMembers(membersRes.data);
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
+      setQuotes([]);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
@@ -62,6 +64,8 @@ const Quotes = () => {
   };
 
   const getMemberName = (memberId) => {
+    // Verificação de segurança também aqui
+    if (!Array.isArray(members)) return "Anônimo";
     const member = members.find(m => m.id === memberId);
     return member ? member.name : "Anônimo";
   };
@@ -145,7 +149,8 @@ const Quotes = () => {
                   data-testid="quote-member-select"
                 >
                   <option value="">Selecione...</option>
-                  {members.map(member => (
+                  {/* CORREÇÃO DE SEGURANÇA NO SELECT */}
+                  {Array.isArray(members) && members.map(member => (
                     <option key={member.id} value={member.id}>{member.name}</option>
                   ))}
                 </select>
@@ -165,13 +170,14 @@ const Quotes = () => {
           <div className="text-center text-maverick-yellow font-special-elite text-2xl" data-testid="loading-quotes">
             [ CARREGANDO CITAÇÕES... ]
           </div>
-        ) : quotes.length === 0 ? (
+        ) : (!Array.isArray(quotes) || quotes.length === 0) ? (
           <div className="text-center text-maverick-dim font-courier-prime text-xl" data-testid="no-quotes-message">
             Nenhuma citação adicionada ainda.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {quotes.map((quote, index) => (
+            {/* CORREÇÃO DE SEGURANÇA NA LISTA */}
+            {Array.isArray(quotes) && quotes.map((quote, index) => (
               <motion.div
                 key={quote.id}
                 initial={{ opacity: 0, scale: 0.8, rotate: rotations[index % 8] }}
