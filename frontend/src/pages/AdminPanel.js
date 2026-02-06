@@ -34,6 +34,7 @@ const AdminPanel = () => {
       setMembers(response.data);
     } catch (error) {
       console.error("Erro ao buscar membros:", error);
+      setMembers([]); // Garante lista vazia em caso de erro
     } finally {
       setLoading(false);
     }
@@ -276,7 +277,8 @@ const AdminPanel = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {members.map((member) => (
+            {/* CORREÇÃO DE SEGURANÇA: Array.isArray */}
+            {Array.isArray(members) && members.map((member) => (
               <motion.div
                 key={member.id}
                 initial={{ opacity: 0, x: -20 }}
