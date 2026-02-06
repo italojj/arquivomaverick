@@ -108,7 +108,7 @@ const MembersGrid = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {members.map((member, index) => (
+            {members?.map((member, index) => (
               <motion.div
                 key={member.id}
                 initial={{ opacity: 0, scale: 0.8, rotate: rotations[index % 8] }}
