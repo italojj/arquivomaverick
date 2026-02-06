@@ -19,6 +19,8 @@ const MembersGrid = () => {
         setMembers(response.data);
       } catch (error) {
         console.error("Erro ao buscar membros:", error);
+        // Garante que continue sendo um array vazio em caso de erro
+        setMembers([]); 
       } finally {
         setLoading(false);
       }
@@ -93,10 +95,12 @@ const MembersGrid = () => {
           <div className="text-center text-maverick-yellow font-special-elite text-2xl" data-testid="loading-message">
             [ CARREGANDO ARQUIVOS... ]
           </div>
-        ) : members.length === 0 ? (
+        ) : (
+          /* AQUI ESTÁ A CORREÇÃO DE SEGURANÇA: Verifica se é Array antes de checar length ou fazer map */
+          (!Array.isArray(members) || members.length === 0) ? (
           <div className="text-center" data-testid="empty-state">
             <p className="text-maverick-yellow font-special-elite text-xl mb-4">
-              [ NENHUM MEMBRO CADASTRADO ]
+              [ NENHUM MEMBRO CADASTRADO OU ACESSO RESTRITO ]
             </p>
             <button
               onClick={() => navigate("/admin")}
@@ -108,7 +112,8 @@ const MembersGrid = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {members?.map((member, index) => (
+            {/* AQUI ESTÁ A CORREÇÃO PRINCIPAL: Array.isArray() protege o map */}
+            {Array.isArray(members) && members.map((member, index) => (
               <motion.div
                 key={member.id}
                 initial={{ opacity: 0, scale: 0.8, rotate: rotations[index % 8] }}
@@ -154,7 +159,7 @@ const MembersGrid = () => {
               </motion.div>
             ))}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
