@@ -10,19 +10,25 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 
-
+# Configuração de Ambiente
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
+# Conexão com Banco de Dados
+mongo_url = os.environ.get('MONGO_URL')
+if not mongo_url:
+    # Fallback apenas para evitar erro na importação, mas vai falhar se tentar conectar sem env
+    mongo_url = "mongodb://localhost:27017"
+
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db_name = os.environ.get('DB_NAME', 'maverick_db')
+db = client[db_name]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# Models
+# --- MODELS ---
 class Member(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -96,11 +102,14 @@ class PhotoCreate(BaseModel):
     member_ids: List[str] = []
 
 
-# Member Routes
+# --- ROTAS ---
+
+# Rota de Saúde (Health Check)
 @api_router.get("/")
 async def root():
-    return {"message": "Gangue da Maverick API"}
+    return {"message": "Gangue da Maverick API", "status": "online"}
 
+# Member Routes
 @api_router.post("/members", response_model=Member)
 async def create_member(input: MemberCreate):
     member_dict = input.model_dump()
@@ -114,7 +123,7 @@ async def create_member(input: MemberCreate):
 async def get_members():
     members = await db.members.find({}, {"_id": 0}).to_list(1000)
     for member in members:
-        if isinstance(member['created_at'], str):
+        if isinstance(member.get('created_at'), str):
             member['created_at'] = datetime.fromisoformat(member['created_at'])
     return members
 
@@ -123,7 +132,7 @@ async def get_member(member_id: str):
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
-    if isinstance(member['created_at'], str):
+    if isinstance(member.get('created_at'), str):
         member['created_at'] = datetime.fromisoformat(member['created_at'])
     return member
 
@@ -138,7 +147,7 @@ async def update_member(member_id: str, input: MemberUpdate):
         raise HTTPException(status_code=404, detail="Member not found")
     
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
-    if isinstance(member['created_at'], str):
+    if isinstance(member.get('created_at'), str):
         member['created_at'] = datetime.fromisoformat(member['created_at'])
     return member
 
@@ -148,7 +157,6 @@ async def delete_member(member_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Member not found")
     return {"message": "Member deleted successfully"}
-
 
 # Comment Routes
 @api_router.post("/comments", response_model=Comment)
@@ -164,10 +172,9 @@ async def create_comment(input: CommentCreate):
 async def get_comments(member_id: str):
     comments = await db.comments.find({"member_id": member_id}, {"_id": 0}).sort("timestamp", -1).to_list(1000)
     for comment in comments:
-        if isinstance(comment['timestamp'], str):
+        if isinstance(comment.get('timestamp'), str):
             comment['timestamp'] = datetime.fromisoformat(comment['timestamp'])
     return comments
-
 
 # Quote Routes
 @api_router.post("/quotes", response_model=Quote)
@@ -183,7 +190,7 @@ async def create_quote(input: QuoteCreate):
 async def get_quotes():
     quotes = await db.quotes.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for quote in quotes:
-        if isinstance(quote['created_at'], str):
+        if isinstance(quote.get('created_at'), str):
             quote['created_at'] = datetime.fromisoformat(quote['created_at'])
     return quotes
 
@@ -193,7 +200,6 @@ async def delete_quote(quote_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Quote not found")
     return {"message": "Quote deleted successfully"}
-
 
 # Photo Routes
 @api_router.post("/photos", response_model=Photo)
@@ -209,7 +215,7 @@ async def create_photo(input: PhotoCreate):
 async def get_photos():
     photos = await db.photos.find({}, {"_id": 0}).sort("timestamp", -1).to_list(1000)
     for photo in photos:
-        if isinstance(photo['timestamp'], str):
+        if isinstance(photo.get('timestamp'), str):
             photo['timestamp'] = datetime.fromisoformat(photo['timestamp'])
     return photos
 
@@ -220,7 +226,7 @@ async def delete_photo(photo_id: str):
         raise HTTPException(status_code=404, detail="Photo not found")
     return {"message": "Photo deleted successfully"}
 
-
+# Configuração Final
 app.include_router(api_router)
 
 app.add_middleware(
@@ -240,3 +246,11 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    port = int(os.environ.get("PORT", 8000))
+    
+    uvicorn.run(app, host="0.0.0.0", port=port)
